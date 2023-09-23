@@ -1,1 +1,4 @@
-src/pf_localisation/__pycache__
+__pycache__
+*.so
+.vscode
+pf2.py
