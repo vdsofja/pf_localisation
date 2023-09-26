@@ -9,6 +9,7 @@ Converted to Python
 import rclpy
 from rclpy.node import Node
 from rclpy.impl import rcutils_logger
+from rclpy.clock import Clock
 
 from geometry_msgs.msg import (PoseWithCovarianceStamped, PoseArray,
                                Quaternion,  Transform,  TransformStamped )
@@ -26,6 +27,7 @@ from pf_localisation.util import rotateQuaternion, getHeading
 from threading import Lock
 import time
 import pf_localisation.sensor_model
+
 PI_OVER_TWO = math.pi/2 # For faster calculations
 
 class PFLocaliserBase(object):
@@ -47,9 +49,9 @@ class PFLocaliserBase(object):
         self._update_lock =  Lock()
 
         # ----- Parameters
-        self.ODOM_ROTATION_NOISE = 0 		# Odometry model rotation noise
-        self.ODOM_TRANSLATION_NOISE = 0 	# Odometry x axis (forward) noise
-        self.ODOM_DRIFT_NOISE = 0 			# Odometry y axis (side-side) noise
+        self.ODOM_ROTATION_NOISE = 0.0 		# Odometry model rotation noise
+        self.ODOM_TRANSLATION_NOISE = 0.0 	# Odometry x axis (forward) noise
+        self.ODOM_DRIFT_NOISE = 0.0 			# Odometry y axis (side-side) noise
         self.NUMBER_PREDICTED_READINGS = 20 # Number of readings to predict
 
         # ----- Set 'previous' translation to origin
@@ -89,7 +91,7 @@ class PFLocaliserBase(object):
         """
         raise NotImplementedError()
 
-    def update_filter(self, scan:LaserScan):
+    def update_filter(self, scan:LaserScan, currentTime):
         """
         Called whenever there is a new LaserScan message.
         This calls update methods (implemented by subclass) to do actual
@@ -113,7 +115,7 @@ class PFLocaliserBase(object):
             self.update_particle_cloud(scan)
             self.particlecloud.header.frame_id = "map"
             self.estimatedpose.pose.pose = self.estimate_pose()
-            currentTime = self.get_clock().now().to_msg()
+            # currentTime = Clock().now().to_msg()
 
             # ----- Given new estimated pose, now work out the new transform
             self.recalculate_transform(currentTime)
@@ -275,8 +277,10 @@ class PFLocaliserBase(object):
         # ----- Estimated pose has been set, so we should now reinitialise the
         # ----- particle cloud around it
         self.logger.info("Got pose. Calling initialise_particle_cloud().")
-        self.particlecloud = self.initialise_particle_cloud(self.estimatedpose)
+        self.particlecloud:PoseArray = self.initialise_particle_cloud(self.estimatedpose)
         self.particlecloud.header.frame_id = "map"
+
+
 
     def set_map(self, occupancy_map):
         """ Set the map for localisation """
@@ -284,5 +288,5 @@ class PFLocaliserBase(object):
         self.sensor_model.set_map(occupancy_map)
         # ----- Map has changed, so we should reinitialise the particle cloud
         self.logger.info("Particle filter got map. (Re)initialising.")
-        self.particlecloud = self.initialise_particle_cloud(self.estimatedpose)
+        self.particlecloud:PoseArray = self.initialise_particle_cloud(self.estimatedpose)
         self.particlecloud.header.frame_id = "map"

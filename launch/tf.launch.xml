@@ -1,0 +1,9 @@
+<launch>
+	<!-- transform each of the 8 sonar sensors into robot_base -->
+
+	<node pkg="tf2_ros" exec="static_transform_publisher" name="stp_sonar0" output="screen" args="0 0 0 0 0 0 1 map odom" />
+
+
+	<!-- END TRANSFORMS -->
+
+</launch>

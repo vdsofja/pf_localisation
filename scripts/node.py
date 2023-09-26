@@ -17,7 +17,7 @@ from pf_localisation.util import *
 
 from geometry_msgs.msg import ( PoseStamped, PoseWithCovarianceStamped,
                                 PoseArray, Quaternion,TransformStamped )
-# from tf.msg import TransformStamped
+from tf2_msgs.msg import TFMessage
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid, Odometry
 import pf_localisation.pf2 #todo change to pf
@@ -45,7 +45,7 @@ class ParticleFilterLocalisationNode(Node):
         self._pose_publisher = self.create_publisher(PoseStamped, "/estimatedpose", 10, callback_group=self.callback_group)
         self._amcl_pose_publisher = self.create_publisher(PoseWithCovarianceStamped, "/amcl_pose",10, callback_group=self.callback_group )
         self._cloud_publisher = self.create_publisher(PoseArray, "/particlecloud", 10, callback_group=self.callback_group)
-        self._tf_publisher = self.create_publisher(TransformStamped, "/tf", 10, callback_group=self.callback_group)
+        self._tf_publisher = self.create_publisher(TFMessage, "/tf", 10, callback_group=self.callback_group)
 
         self.get_logger().info("Waiting for a map...")
         latching_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -54,7 +54,7 @@ class ParticleFilterLocalisationNode(Node):
 
 
         qos_odom = QoSProfile(depth=1, reliability=ReliabilityPolicy.BEST_EFFORT)
-        self._laser_subscriber = self.create_subscription(LaserScan, "/base_scan", self._laser_callback,    qos_profile=qos_odom)
+        self._laser_subscriber = self.create_subscription(LaserScan, "/scan", self._laser_callback,    qos_profile=qos_odom)
         self._initial_pose_subscriber = self.create_subscription(PoseWithCovarianceStamped, "/initialpose", self._initial_pose_callback,  qos_profile=qos_odom)
         self._odometry_subscriber = self.create_subscription(Odometry, "/odom",    self._odometry_callback, qos_profile=qos_odom)
 
@@ -91,7 +91,7 @@ class ParticleFilterLocalisationNode(Node):
             t_odom = self._particle_filter.predict_from_odometry(odometry)
             self.get_logger().info("Odometry update: %fs"%t_odom)
             if self._latest_scan:
-                t_filter = self._particle_filter.update_filter(self._latest_scan)
+                t_filter = self._particle_filter.update_filter(self._latest_scan, self.get_clock().now().to_msg())
                 self.get_logger().info("Particle update: %fs"%t_filter)
                 if t_odom + t_filter > 0.1:
                     self.get_logger().warning("Filter cycle overran timeslot")
